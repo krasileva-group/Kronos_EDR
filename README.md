@@ -1,8 +1,8 @@
-# Exom-Capture Sequencing Data Re-Mapping
+# Exome-Capture Sequencing Data Re-Mapping
 
 ## Datasets
 
-Following datasets were downloaded from the NCBI with sra-tools v2.11.2. 
+Following datasets were downloaded from the NCBI with sra-tools v2.11.2. The datasets for T4-2027 and T4-2067 could not be found. 
 ```
 cat accessions.list
 T4-244	SRX688135
@@ -43,6 +43,7 @@ T4-3949	SRX2433984
 
 
 ```
+#download the exome capture data
 module load sra-tools
 fasterq-dump-orig.2.11.2 --version
 fasterq-dump-orig.2.11.2 : 2.11.2
@@ -69,7 +70,7 @@ done
 
 ## Alignment
 
-The filtered reads were aligned to the Kronos genome with hist2 v2.2.1
+The filtered reads were aligned to [the Kronos genome](https://zenodo.org/records/10215402) with hist2 v2.2.1
 ```
 hisat2 --version
 /global/scratch/users/skyungyong/Software/anaconda3/envs/bioinformatics/bin/hisat2-align-s version 2.2.1
