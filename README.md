@@ -70,7 +70,7 @@ done
 
 ## Alignment
 
-The filtered reads were aligned to [the Kronos genome](https://zenodo.org/records/10215402) with hist2 v2.2.1
+The filtered reads were aligned to [the Kronos genome](https://zenodo.org/records/10215402) with hisat2 v2.2.1
 ```
 hisat2 --version
 /global/scratch/users/skyungyong/Software/anaconda3/envs/bioinformatics/bin/hisat2-align-s version 2.2.1
@@ -92,3 +92,14 @@ for read1 in *.1.filtered.fq; do
   hisat2 -p 56 --very-sensitive --no-mixed --no-discordant -k 10 -x Kronos -1 "$read1" -2 "$read2" -S "$sam"
 done
 ```
+
+## Filtering the alignments
+
+samtools --version
+samtools 1.15.1
+Using htslib 1.16
+
+picard MarkDuplicates --version
+Version:3.0.0
+
+
