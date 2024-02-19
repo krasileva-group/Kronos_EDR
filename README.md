@@ -68,38 +68,72 @@ for read1 in *_1.fastq; do
 done
 ```
 
-## Alignment
+## Alignment and filtering
 
-The filtered reads were aligned to [the Kronos genome](https://zenodo.org/records/10215402) with hisat2 v2.2.1
+The filtered reads were aligned to [the Kronos genome](https://zenodo.org/records/10215402) with bwa v0.7.17-r1188. The alignment was then sorted and marked for duplicates with samtools v1.15.1 and picard v3.0.0.
 ```
-hisat2 --version
-/global/scratch/users/skyungyong/Software/anaconda3/envs/bioinformatics/bin/hisat2-align-s version 2.2.1
-64-bit
-Built on fv-az337-532
-Tue May 16 08:39:06 UTC 2023
-Compiler: collect2: error: ld returned 1 exit status
-Options: -O3 -m64 -msse2 -funroll-loops -g3 -DPOPCNT_CAPABILITY -std=c++11
-Sizeof {int, long, long long, void*, size_t, off_t}: {4, 8, 8, 8, 8, 8}
+bwa
+Program: bwa (alignment via Burrows-Wheeler transformation)
+Version: 0.7.17-r1188
+Contact: Heng Li <lh3@sanger.ac.uk>
 
-#index the genome
-hisat2-build -p 56 Kronos.collapsed.chromosomes.fa Kronos
+samtools version
+samtools 1.15.1
+Using htslib 1.16
+Copyright (C) 2022 Genome Research Ltd.
 
-#align to the genome
+picard MarkDuplicates --version
+Version:3.0.0
+```
+```
+#Index genome
+bwa index -p Kronos Kronos.collapsed.chromosomes.fa
+
 for read1 in *.1.filtered.fq; do
   prefix="${read1%.1.filtered.fq}"
   read2="${prefix}.2.filtered.fq"
   sam="${prefix}.sam"
-  hisat2 -p 56 --very-sensitive --no-mixed --no-discordant -k 10 -x Kronos -1 "$read1" -2 "$read2" -S "$sam"
+
+  #align
+  bwa mem -t 56 Kronos -o "$sam" "$read1" "$read2"
+
+  #process
+  samtools view -@ 56 -h -O BAM $sam | samtools sort -@ 56 -o "$prefix.sorted.bam"
+  picard MarkDuplicates CREATE_INDEX=FALSE I="$prefix.sorted.bam" O="$prefix.sorted.marked.bam" M="$prefix.dup.txt"
+
 done
 ```
 
-## Filtering the alignments
+## The MAPS pipeline
 
-samtools --version
-samtools 1.15.1
-Using htslib 1.16
+The alignments were processed with the [MAPS pipeline](https://github.com/DubcovskyLab/wheat_tilling_pub/tree/master/maps_pipeline). Each chromosome was individually processed.  
 
-picard MarkDuplicates --version
-Version:3.0.0
+```
+module load python/2.7
+
+#process the alignments
+python ./wheat_tilling_pub/maps_pipeline/beta-run-mpileup.py -t 56 -r Kronos.collapsed.chromosomes.fa -o Kronos_mpileup.txt -s $(which samtools) --bamname .sorted.marked.bam
+
+#mpileup outputs for each chromosome was stored in seperate directories
+for chr in 1A 1B 2A 2B 3A 3B 4A 4B 5A 5B 6A 6B 7A 7B Un; do
+    pushd "$chr"  
+    python ../wheat_tilling_pub/maps_pipeline/beta-mpileup-parser.py -t 56 -f "${chr}_mpileup.txt"
+    python ../wheat_tilling_pub/maps_pipeline/beta-maps1-v2.py -f "parsed_${chr}_mpileup.txt" -t 56 -l 20 -o "${chr}.mapspart1.txt"
+    popd
+done
+
+#collect all outputs
+head -n 1 ../1A/1A.mapspart1.txt > all.mapspat1.txt
+for file in */*.mapspart1.txt; do tail -n +2 "$file"; done >> maps1_output_all/all.mapspat1.txt
+
+#run part2
+#homMinCov = s 3 4 5 6
+#hetMinCov = d 2 3 3 4
+for pair in "3,2" "4,3" "5,3" "6,4"; do
+  k=$(echo $pair | cut -d',' -f1)
+  j=$(echo $pair | cut -d',' -f2)
+  python ./wheat_tilling_pub/maps_pipeline/maps-part2-v2.py -f all.mapspat1.txt -l 20 --homMinCov $k --hetMinCov $j -o all.mapspart2.HetMinCov${j}HomMinCov${k}.tsv -m m
+done
+```
 
 
