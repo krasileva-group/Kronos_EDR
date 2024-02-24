@@ -124,8 +124,8 @@ for chr in 1A 1B 2A 2B 3A 3B 4A 4B 5A 5B 6A 6B 7A 7B Un; do
 done
 
 #collect all outputs
-head -n 1 ../1A/1A.mapspart1.txt > all.mapspat1.txt
-for file in */*.mapspart1.txt; do tail -n +2 "$file"; done >> maps1_output_all/all.mapspat1.txt
+head -n 1 1A/1A.mapspart1.txt > maps1_output_all/all.mapspart1.out
+for file in */*.mapspart1.txt; do tail -n +2 "$file"; done >> maps1_output_all/all.mapspart1.out
 
 #run part2
 #homMinCov = s 3 4 5 6
