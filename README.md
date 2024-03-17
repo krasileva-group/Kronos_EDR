@@ -141,5 +141,5 @@ done
 ls *.tsv | while read line; do python reformat_maps2_tsv.py $line; done
 bash ../wheat_tilling_pub/postprocessing/vcf_modifications/fixMAPSOutputAndMakeVCF.sh
 ```
-
+python ../../wheat_tilling_pub/postprocessing/stats/calcSummaryFileFromCombinedTsv.py -m all.mapspart2.HetMinCov2HomMinCov3.reformatted.tsv -w Kronos -i
 
