@@ -6,6 +6,7 @@ Following datasets were downloaded from the NCBI with sra-tools v2.11.2. The dat
 ```
 cat accessions.list
 LINE	NCBI Accession
+Kr0  SRX688079
 Kr244	SRX688135
 Kr439	SRX688215
 Kr456	SRX688225
@@ -136,7 +137,7 @@ for pair in "3,2" "4,3" "5,3" "6,4"; do
   python ./wheat_tilling_pub/maps_pipeline/maps-part2-v2.py -f all.mapspat1.txt -l 20 --homMinCov $k --hetMinCov $j -o all.mapspart2.HetMinCov${j}HomMinCov${k}.tsv -m m
 done
 
-#convert the MAPS output to vsf files
+#convert the MAPS output to vcf files
 ls *.tsv | while read line; do python reformat_maps2_tsv.py $line; done
 bash ../wheat_tilling_pub/postprocessing/vcf_modifications/fixMAPSOutputAndMakeVCF.sh
 ```
