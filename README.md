@@ -213,8 +213,31 @@ Kr3540 0.989328
 Kr3737 0.968791
 Kr3949 0.993997
 ````
-
+````
 bash ../wheat_tilling_pub/postprocessing/vcf_modifications/fixMAPSOutputAndMakeVCF.sh
-```
-python ../../wheat_tilling_pub/postprocessing/stats/calcSummaryFileFromCombinedTsv.py -m all.mapspart2.HetMinCov2HomMinCov3.reformatted.tsv -w Kronos -i
+````
+
+For high-confidence gene sets, 
+````
+less snpEff.config | grep 'Kronos'
+Kronos.genome : Kronos
+
+# genome version 1.1 annottaion version 1.0 (high-confidence only)
+ls -lha ./data/Kronos/
+-rw-r--r-- 1 skyungyong ucb  65M Mar 17 20:10 genes.gff
+-rw-r--r-- 1 skyungyong ucb 9.9G Mar 17 20:11 sequences.fa
+-rw-r--r-- 1 skyungyong ucb  83M Mar 17 20:38 cds.fa
+-rw-r--r-- 1 skyungyong ucb  29M Mar 17 20:38 protein.fa
+
+awk '$3 == "gene" {print}' ./data/Kronos/genes.gff | wc -l
+67465
+
+java -jar snpEff.jar build -gff3 -v Kronos
+java -jar /global/scratch/users/skyungyong/Software/snpEff/snpEff.jar eff -v Kronos all.mapspart2.HetMinCov5HomMinCov3.reformatted.vcf > all.mapspart2.HetMinCov5HomMinCov3.reformatted.snpeff.out
+
+
+````
+
+For all gene sets, 
+
 
