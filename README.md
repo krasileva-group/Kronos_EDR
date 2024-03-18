@@ -114,13 +114,14 @@ The alignments were processed with the [MAPS pipeline](https://github.com/Dubcov
 module load python/2.7
 
 #process the alignments
-python ./wheat_tilling_pub/maps_pipeline/beta-run-mpileup.py -t 56 -r Kronos.collapsed.chromosomes.fa -o Kronos_mpileup.txt -s $(which samtools) --bamname .sorted.marked.bam
+python ./wheat_tilling_pub/maps_pipeline/beta-run-mpileup.py -t 56 -r Kronos.collapsed.chromosomes.fa -q 20 -Q 20 -o Kronos_mpileup.txt -s $(which samtools) --bamname .sorted.marked.bam
 
 #mpileup outputs for each chromosome was stored in seperate directories
+#l was chosen as 28. # total libraries (33) - WT Kronos (1) - 4
 for chr in 1A 1B 2A 2B 3A 3B 4A 4B 5A 5B 6A 6B 7A 7B Un; do
     pushd "$chr"  
     python ../wheat_tilling_pub/maps_pipeline/beta-mpileup-parser.py -t 56 -f "${chr}_mpileup.txt"
-    python ../wheat_tilling_pub/maps_pipeline/beta-maps1-v2.py -f "parsed_${chr}_mpileup.txt" -t 56 -l 20 -o "${chr}.mapspart1.txt"
+    python ../wheat_tilling_pub/maps_pipeline/beta-maps1-v2.py -f "parsed_${chr}_mpileup.txt" -t 56 -l 28 -o "${chr}.mapspart1.txt"
     popd
 done
 
@@ -129,16 +130,90 @@ head -n 1 1A/1A.mapspart1.txt > maps1_output_all/all.mapspart1.out
 for file in */*.mapspart1.txt; do tail -n +2 "$file"; done >> maps1_output_all/all.mapspart1.out
 
 #run part2
-#homMinCov = s 3 4 5 6
-#hetMinCov = d 2 3 3 4
+#homMinCov = s 3 3 4 5 6
+#hetMinCov = d 2 5 3 3 4
 for pair in "3,2" "4,3" "5,3" "6,4"; do
   k=$(echo $pair | cut -d',' -f1)
   j=$(echo $pair | cut -d',' -f2)
-  python ./wheat_tilling_pub/maps_pipeline/maps-part2-v2.py -f all.mapspat1.txt -l 20 --homMinCov $k --hetMinCov $j -o all.mapspart2.HetMinCov${j}HomMinCov${k}.tsv -m m
+  python ./wheat_tilling_pub/maps_pipeline/maps-part2-v2.py -f all.mapspat1.txt --hetMinPer 15 -l 28 --homMinCov $k --hetMinCov $j -o all.mapspart2.HetMinCov${j}HomMinCov${k}.tsv -m m
 done
 
 #convert the MAPS output to vcf files
 ls *.tsv | while read line; do python reformat_maps2_tsv.py $line; done
+
+#print statistics
+for tsv in *.reformatted.tsv; do
+  echo ${tsv}
+  python ../../wheat_tilling_pub/postprocessing/stats/calcSummaryFileFromCombinedTsv.py -m ${tsv} -w Kronos -i ${tsv}.stats
+done
+```
+
+The standard outputs are:
+```
+all.mapspart2.HetMinCov2HomMinCov3.reformatted.tsv
+Plant Type(WT/mut)      Total # samples Total # SNPs    Average # SNPs per line Total # Het SNPs        Het/Hom ratio   Total # non-EMS Transition SNPs  Total # non-EMS Transition Hets Total # of non-EMS transition Homs      Total # EMS SNPs        Percent EMS SNPs
+wildtype        1       346     346.0   317     10.9310344828   59      51      8       111     0.320809248555
+mutant  32      83677   2614.90625      66889   3.98433404813   1693    1425    268     48114   0.574996713553
+
+all.mapspart2.HetMinCov3HomMinCov4.reformatted.tsv
+Plant Type(WT/mut)      Total # samples Total # SNPs    Average # SNPs per line Total # Het SNPs        Het/Hom ratio   Total # non-EMS Transition SNPs  Total # non-EMS Transition Hets Total # of non-EMS transition Homs      Total # EMS SNPs        Percent EMS SNPs
+wildtype        1       57      57.0    8       0.163265306122  18      1       17      20      0.350877192982
+mutant  32      44421   1388.15625      29192   1.91686913126   484     217     267     40940   0.921636163076
+
+all.mapspart2.HetMinCov3HomMinCov5.reformatted.tsv
+Plant Type(WT/mut)      Total # samples Total # SNPs    Average # SNPs per line Total # Het SNPs        Het/Hom ratio   Total # non-EMS Transition SNPs  Total # non-EMS Transition Hets Total # of non-EMS transition Homs      Total # EMS SNPs        Percent EMS SNPs
+wildtype        1       76      76.0    8       0.117647058824  28      1       27      24      0.315789473684
+mutant  32      43033   1344.78125      29195   2.10977019801   458     219     239     39595   0.920107824228
+
+all.mapspart2.HetMinCov4HomMinCov6.reformatted.tsv
+Plant Type(WT/mut)      Total # samples Total # SNPs    Average # SNPs per line Total # Het SNPs        Het/Hom ratio   Total # non-EMS Transition SNPs  Total # non-EMS Transition Hets Total # of non-EMS transition Homs      Total # EMS SNPs        Percent EMS SNPs
+wildtype        1       103     103.0   5       0.0510204081633 31      0       31      39      0.378640776699
+mutant  32      36351   1135.96875      23750   1.88477104992   387     173     214     35057   0.964402629914
+
+# We will use HomMinCov=3 and HetMinCov=5
+all.mapspart2.HetMinCov5HomMinCov3.reformatted.tsv
+Plant Type(WT/mut)      Total # samples Total # SNPs    Average # SNPs per line Total # Het SNPs        Het/Hom ratio   Total # non-EMS Transition SNPs  Total # non-EMS Transition Hets Total # of non-EMS transition Homs      Total # EMS SNPs        Percent EMS SNPs
+wildtype        1       30      30.0    1       0.0344827586207 8       0       8       14      0.466666666667
+mutant  32      37341   1166.90625      20522   1.22016766752   393     123     270     36227   0.970166840738
+```
+
+Find a set of parameters for 98% or higher EMS mutations
+```
+grep 'Kr' all.mapspart2.HetMinCov5HomMinCov3.reformatted.tsv.stats | awk '{print $3 "\t" $5/$4}' | sed 's/Kr//g' | sort -nk 1 | while read line; do echo 'Kr'${line};  done
+Kr244 0.966047
+Kr439 0.994434
+Kr456 0.945963
+Kr563 0.995196
+Kr620 0.964573
+Kr628 0.990033
+Kr684 0.693347
+Kr807 0.992194
+Kr1194 0.991992
+Kr1360 0.992449
+Kr1382 0.97669
+Kr2053 0.981837
+Kr2064 0.991892
+Kr2254 0.987469
+Kr2267 0.985554
+Kr2322 0.989637
+Kr2448 0.987092
+Kr2480 0.985356
+Kr2553 0.989368
+Kr2876 0.995539
+Kr3166 0.987582
+Kr3186 0.988083
+Kr3188 0.992912
+Kr3210 0.97723
+Kr3339 0.991657
+Kr3344 0.980159
+Kr3474 0.992469
+Kr3505 0.986386
+Kr3508 0.993164
+Kr3540 0.989328
+Kr3737 0.968791
+Kr3949 0.993997
+````
+
 bash ../wheat_tilling_pub/postprocessing/vcf_modifications/fixMAPSOutputAndMakeVCF.sh
 ```
 python ../../wheat_tilling_pub/postprocessing/stats/calcSummaryFileFromCombinedTsv.py -m all.mapspart2.HetMinCov2HomMinCov3.reformatted.tsv -w Kronos -i
