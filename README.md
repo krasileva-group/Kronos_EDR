@@ -70,6 +70,34 @@ for read1 in *_1.fastq; do
 done
 ```
 
+## Genome spliting
+
+The size of the chromosomes are too large to be handled by bam files. The alignemnts across the coordinates past the limit will be assigned to bin 0. It is unclear how this would impact the downstream, but to avoid any unexpected outcomes I will split large chromosomes into two. 
+
+```
+#search for contig joins
+grep -Pob 'N{200,}' ../5.Annotations/Final/Kronos.collapsed.chromosomes.masked.v1.1.fa > breaks.list
+
+#break at the join closest to the center of the chromosome
+python break.py
+1A broken at 296625417
+1B broken at 362283996
+2A broken at 389606086
+2B broken at 416081101
+3A broken at 354343362
+3B broken at 427883679
+4A broken at 376933649
+4B broken at 351648618
+5A broken at 305547233
+5B broken at 360298581
+6A broken at 294206980
+6B broken at 365632995
+7A broken at 370147894
+7B broken at 378890030
+Un no breaks possible
+```
+
+
 ## Alignment and filtering
 
 The filtered reads were aligned to [the Kronos genome](https://zenodo.org/records/10215402) with bwa v0.7.17-r1188. The alignment was then sorted and marked for duplicates with samtools v1.15.1 and picard v3.0.0.
@@ -88,21 +116,25 @@ picard MarkDuplicates --version
 Version:3.0.0
 ```
 ```
-#Index genome
-bwa index -p Kronos Kronos.collapsed.chromosomes.fa
-
-for read1 in *.1.filtered.fq; do
-  prefix="${read1%.1.filtered.fq}"
+dir="/global/scratch/users/skyungyong/Kronos_EDR"
+for read in "${dir}"/*.1.filtered.fq; do
+  p=$(basename ${read})
+  prefix="${p%.1.filtered.fq}"
+  read1="${prefix}.1.filtered.fq"
   read2="${prefix}.2.filtered.fq"
+  sai1="${prefix}.1.sai"
+  sai2="${prefix}.2.sai"
   sam="${prefix}.sam"
 
   #align
-  bwa mem -t 56 Kronos -o "$sam" "$read1" "$read2"
+  bwa aln -t 56 Kronos -f "$sai1" "${dir}/${read1}"
+  bwa aln -t 56 Kronos -f "$sai2" "${dir}/${read2}"
+  bwa sampe -N 10 -n 10 -f "$sam" Kronos "$sai1" "$sai2" "${dir}/${read1}" "${dir}/${read2}"
 
   #process
-  samtools view -@ 56 -h -O BAM $sam | samtools sort -@ 56 -o "$prefix.sorted.bam"
-  picard MarkDuplicates CREATE_INDEX=FALSE I="$prefix.sorted.bam" O="$prefix.sorted.marked.bam" M="$prefix.dup.txt"
-
+  samtools view -@56 -h $sam | samtools sort -@56 -o "$prefix.sorted.bam"
+  samtools index "$prefix.sorted.bam"
+  picard MarkDuplicates REMOVE_DUPLICATES=true I="$prefix.sorted.bam" O="$prefix.sorted.rmdup.bam" M="$prefix.rmdup.txt"
 done
 ```
 
@@ -117,11 +149,14 @@ module load python/2.7
 python ./wheat_tilling_pub/maps_pipeline/beta-run-mpileup.py -t 56 -r Kronos.collapsed.chromosomes.fa -q 20 -Q 20 -o Kronos_mpileup.txt -s $(which samtools) --bamname .sorted.marked.bam
 
 #mpileup outputs for each chromosome was stored in seperate directories
+#make directories and copy each mpileup file
+
+
 #l was chosen as 28. # total libraries (33) - WT Kronos (1) - 4
-for chr in 1A 1B 2A 2B 3A 3B 4A 4B 5A 5B 6A 6B 7A 7B Un; do
+for chr in $(ls -d */ | sed 's/\/$//'); do
     pushd "$chr"  
     python ../wheat_tilling_pub/maps_pipeline/beta-mpileup-parser.py -t 56 -f "${chr}_mpileup.txt"
-    python ../wheat_tilling_pub/maps_pipeline/beta-maps1-v2.py -f "parsed_${chr}_mpileup.txt" -t 56 -l 28 -o "${chr}.mapspart1.txt"
+    python ../wheat_tilling_pub/maps_pipeline/beta-maps1-v2.py -f "parsed_${chr}_mpileup.txt" -t 56 -l 20 -o "${chr}.mapspart1.txt"
     popd
 done
 
