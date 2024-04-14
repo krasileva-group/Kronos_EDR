@@ -150,9 +150,24 @@ python ./wheat_tilling_pub/maps_pipeline/beta-run-mpileup.py -t 56 -r Kronos.col
 
 #mpileup outputs for each chromosome was stored in seperate directories
 #make directories and copy each mpileup file
+for idx in {2..30}; do
+    bed="../temp-region-${idx}.bed"
+    mpileup="../temp-mpileup-part-${idx}.txt"
 
+    # Read the first line only and get the first field (chromosome)
+    chr=$(awk 'NR==1 {print $1}' "$bed")
 
-#l was chosen as 28. # total libraries (33) - WT Kronos (1) - 4
+    # Check if the chromosome directory exists, if not, create it
+    [ ! -d "${chr}" ] && mkdir -p "${chr}"
+
+    # Copy the mpileup file into the appropriate chromosome directory
+    # Add error checking for the copy operation
+    head -n 1 Kronos_mpileup.txt > "${chr}/${chr}_mpileup.txt"
+    cat "$mpileup" >> "${chr}/${chr}_mpileup.txt"
+
+done
+
+#l was chosen as 20.
 for chr in $(ls -d */ | sed 's/\/$//'); do
     pushd "$chr"  
     python ../wheat_tilling_pub/maps_pipeline/beta-mpileup-parser.py -t 56 -f "${chr}_mpileup.txt"
