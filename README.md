@@ -143,9 +143,7 @@ done
 
 ## The MAPS pipeline
 
-The alignments were processed with the [MAPS pipeline](https://github.com/DubcovskyLab/wheat_tilling_pub/tree/master/maps_pipeline). Each chromosome was individually processed.  
-
-First, the bamfiles with duplicates removed were processed. I changed the script, beta-run-mpileup.py, so that the temp outputs are not deleted at the end of the processing.
+The alignments were processed with the [MAPS pipeline](https://github.com/DubcovskyLab/wheat_tilling_pub/tree/master/maps_pipeline). First, the bamfiles with duplicates removed were processed. I changed the script, beta-run-mpileup.py, so that the temp outputs are not deleted at the end of the processing.
 ```
 module load python/2.7
 
@@ -185,7 +183,7 @@ for chr in $(ls -d */ | sed 's/\/$//'); do
 done
 ```
 
-All the outputs were collected into a single file
+All the outputs were collected into a single file.
 ```
 mkdir maps1_output_all
 head -n 1 1A/1A.mapspart1.txt > maps1_output_all/all.mapspart1.out
@@ -203,11 +201,12 @@ for pair in "3,2" "3,5" "4,3" "5,3" "6,4"; do
 done
 ```
 
-#rename the libraries
-python reformat_maps2_tsv.py all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.tsv
+I changed the SRA accessions to Kronos line IDs and converted the coordinates of broken scaffolds to those of original scaffolds.
+```
+ls *.tsv | while read line; do python reformat_maps2_tsv.py all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.tsv; done
 ```
 
-Following the previous publication, we will proceed with HetMinCov=5 and HomMinCov=3. Detect residual hetrogenity. 
+Detect and remove residual hetrogenity. 
 ```
 bash ../../../China_EDR/wheat_tilling_pub/postprocessing/residual_heterogeneity/generate_RH.sh all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.reformatted.tsv chr.length.list
 ```
