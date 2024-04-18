@@ -192,9 +192,9 @@ for file in */*.mapspart1.txt; do tail -n +2 "$file"; done >> maps1_output_all/a
 
 Then, the second part of the MAPS pipeline. Different combinations of HomMinCov and HetMinCov were chosen.
 ```
-#homMinCov = s 3 3 4 5 6
-#hetMinCov = d 2 5 3 3 4
-for pair in "3,2" "3,5" "4,3" "5,3" "6,4"; do
+#homMinCov = 2 3 3 3 4 5 6
+#hetMinCov = 3 4 2 5 3 3 4
+for pair in "2,3" "3,2", "3,4" "3,5" "4,3" "5,3" "6,4"; do
   k=$(echo $pair | cut -d',' -f1)
   j=$(echo $pair | cut -d',' -f2)
   python ./wheat_tilling_pub/maps_pipeline/maps-part2-v2.py -f all.mapspat1.txt --hetMinPer 15 -l 20 --homMinCov $k --hetMinCov $j -o all.mapspart2.Lib20HetMinPer15HetMinCov${j}HomMinCov${k}.tsv -m m
@@ -203,92 +203,82 @@ done
 
 I changed the SRA accessions to Kronos line IDs and converted the coordinates of broken scaffolds to those of original scaffolds.
 ```
-ls *.tsv | while read line; do python reformat_maps2_tsv.py all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.tsv; done
+ls *.tsv | while read line; do python $line ; done
 ```
 
 Detect and remove residual hetrogenity. 
 ```
-bash ../../../China_EDR/wheat_tilling_pub/postprocessing/residual_heterogeneity/generate_RH.sh all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.reformatted.tsv chr.length.list
+ls *.reformatted.tsv | while read line; bash ./wheat_tilling_pub/postprocessing/residual_heterogeneity/generate_RH.sh $line chr.length.list; done
+```
+
+Final processing.
+```
+mkdir no_RH
+mv *No_RH.maps* no_RH/
+bash ./wheat_tilling_pub/postprocessing/vcf_modifications/fixMAPSOutputAndMakeVCF.sh
 ```
 
 ```
-python ../../../China_EDR/wheat_tilling_pub/postprocessing/stats/calcSummaryFileFromCombinedTsv.py -m all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.tsv -w Kronos -i all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.stats
-Plant Type(WT/mut)      Total # samples Total # SNPs    Average # SNPs per line Total # Het SNPs        Het/Hom ratio    Total # non-EMS Transition SNPs Total # non-EMS Transition Hets Total # of non-EMS transition Homs       Total # EMS SNPs        Percent EMS SNPs
-wildtype        0       0       0       0       0       0       0       0       0       0
-mutant  33      89147   2701.42424242   47570   1.144142194     190     190     0       88367   0.991250406632
-````
-
-18 SNPs were detected from the non-mutagenized Kronos0. However, Kr0's sequences (6th column) match the reference genome's (3rd column), except for two. Essentially, these two are identical. 
-````
-less all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.tsv | awk '$7 == "Kronos0" {print}'
-1A      18535907        T       95      C       T       Kronos0 hom     0       9       CT      9       28       .
-1A      19301630        A       254     G       A       Kronos0 hom     0       10      GA      10      30       .
-1A      19867002        A       70      G       A       Kronos0 hom     0       4       GA      4       28       .
-1A      20780870        A       56      G       A       Kronos0 hom     0       7       GA      7       26       .
-1A      21703560        T       57      C       T       Kronos0 hom     0       7       CT      7       24       .
-1A      22290813        A       122     G       A       Kronos0 hom     0       3       GA      3       30       .
-1A      23343070        T       54      C       T       Kronos0 hom     0       4       CT      4       24       .
-1A      25890062        A       52      G       A       Kronos0 hom     0       4       GA      4       24       .
-1A      28663266        A       51      G       A       Kronos0 hom     0       3       GA      3       24       .
-2B      414350278       C       269     C       T       Kronos0 hom     0       14      CT      14      33       .
-2B      685058824       T       46      C       T       Kronos0 hom     0       3       CT      3       21       .
-3A      64605193        A       52      G       A       Kronos0 hom     0       4       GA      4       22       .
-3A      66585541        T       50      C       T       Kronos0 hom     0       3       CT      3       25       .
-4A      33458051        T       43      C       T       Kronos0 hom     0       4       CT      4       21       .
-5A      443310262       A       65      G       A       Kronos0 hom     0       5       GA      5       26       .
-5A      443317368       A       61      G       A       Kronos0 hom     0       5       GA      5       26       .
-6A      496715999       C       272     C       A       Kronos0 het     25      5       CA      30      20       .
-6B      442479189       T       49      C       T       Kronos0 hom     0       4       CT      4       24       .
-````
-For other lines:
-````
-cat all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.reform
-atted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.stats | cut -f -11
-num_mutsamples  runningtotal_mutsnps    sample_name     total_snps      ems_snps        nonems_transitionnonems_transition_hets  nonems_transition_homs  count_hets      ind_hethom      ems_perc
-1       3306    Kronos2448      3306    3287    1       1       0       1760    1.13842173351   0.994252873563
-2       5165    Kronos3737      1859    1796    1       1       0       722     0.635004397537  0.966110812265
-3       7736    Kronos439       2571    2545    10      10      0       1446    1.28533333333   0.989887203423
-4       10702   Kronos807       2966    2953    3       3       0       1243    0.721416134649  0.995616992583
-5       14860   Kronos3188      4158    4141    2       2       0       2281    1.21523708045   0.995911495911
-6       17146   Kronos2053      2286    2278    2       2       0       919     0.672275054865  0.996500437445
-7       21818   Kronos3186      4672    4635    12      12      0       3137    2.04364820847   0.992080479452
-8       23664   Kronos3344      1846    1814    7       7       0       1155    1.67149059334   0.982665222102
-9       23682   Kronos0 18      17      0       0       0       1       0.0588235294118 0.944444444444
-10      27296   Kronos456       3614    3565    12      12      0       1982    1.21446078431   0.986441615938
-11      30904   Kronos563       3608    3595    6       6       0       1414    0.644484958979  0.996396895787
-12      32059   Kronos2480      1155    1152    1       1       0       611     1.12316176471   0.997402597403
-13      35289   Kronos2876      3230    3213    2       2       0       1533    0.903358868592  0.994736842105
-14      37796   Kronos3210      2507    2483    9       9       0       1339    1.14640410959   0.990426804946
-15      39999   Kronos1382      2203    2168    12      12      0       1110    1.01555352242   0.984112573763
-16      42880   Kronos244       2881    2853    11      11      0       1614    1.27387529597   0.990281152378
-17      44505   Kronos2267      1625    1616    3       3       0       711     0.777899343545  0.994461538462
-18      47097   Kronos2322      2592    2567    7       7       0       1187    0.844839857651  0.990354938272
-19      51217   Kronos2553      4120    4087    11      11      0       2675    1.85121107266   0.991990291262
-20      53273   Kronos3505      2056    2029    4       4       0       1185    1.36050516648   0.98686770428
-21      55319   Kronos3339      2046    2019    5       5       0       1214    1.45913461538   0.986803519062
-22      58245   Kronos628       2926    2905    5       5       0       1762    1.51374570447   0.992822966507
-23      60801   Kronos3508      2556    2537    9       9       0       1347    1.1141439206    0.992566510172
-24      63599   Kronos3474      2798    2770    9       9       0       1857    1.9734325186    0.989992852037
-25      65043   Kronos620       1444    1425    5       5       0       764     1.12352941176   0.986842105263
-26      67952   Kronos3949      2909    2876    12      12      0       1584    1.19547169811   0.988655895497
-27      70300   Kronos3540      2348    2326    5       5       0       1203    1.05065502183   0.99063032368
-28      72585   Kronos1360      2285    2259    4       4       0       1144    1.00262927257   0.988621444201
-29      74520   Kronos2064      1935    1919    3       3       0       1159    1.49355670103   0.99173126615
-30      77356   Kronos684       2836    2816    5       5       0       1374    0.939808481532  0.992947813822
-31      82904   Kronos1194      5548    5516    3       3       0       3467    1.66602594906   0.994232155732
-32      85819   Kronos2254      2915    2899    3       3       0       1202    0.701692936369  0.994511149228
-33      89147   Kronos3166      3328    3306    6       6       0       1468    0.789247311828  0.993389423077
-````
-
-For mutation effect detection, let's convert the output into a vcf file. 
-
-```
-#change to vcf format
-./wheat_tilling_pub/postprocessing/vcf_modifications/fixMAPSOutputAndMakeVCF.sh
+mkdir RH
+mv *RH_only* RH/
+bash ./wheat_tilling_pub/postprocessing/vcf_modifications/fixMAPSOutputAndMakeVCF.sh
 ```
 
 
-We will take a high-confidence gene set that only has one transcript per gene which encodes the longest protein. 
+
+## Data analysis
+We focused on substitutions recorded on the output VCF files (*.maps.vcf), excluding the residual hetrogenity regions. 
+
+```
+python summarize_vcf.py
+```
+
+This produces Mutations.summary that counts EMS and non-EMS type mutations from each inputfile. One mutant line, except for our control (Kronos0), could not meet 98%-EMS rate and have 'X' in the printed column. We will use HetMinCov=5 and HomMinCov=3 for Kronos3737, which produced 96.6% EMS-type mutation rate. Our control line will also rely on these parameters, which were used as a default in [the previous study](https://www.pnas.org/doi/epdf/10.1073/pnas.1619268114). 
+```
+awk '{print $1 "\t" $44}' Mutations.summary
+Kronos0 X
+Kronos244       HetMinCov3HomMinCov2
+Kronos439       HetMinCov3HomMinCov2
+Kronos456       HetMinCov3HomMinCov2
+Kronos563       HetMinCov3HomMinCov2
+Kronos620       HetMinCov4HomMinCov3
+Kronos628       HetMinCov4HomMinCov3
+Kronos684       HetMinCov4HomMinCov3
+Kronos807       HetMinCov3HomMinCov2
+Kronos1194      HetMinCov3HomMinCov2
+Kronos1360      HetMinCov4HomMinCov3
+Kronos1382      HetMinCov4HomMinCov3
+Kronos2053      HetMinCov4HomMinCov3
+Kronos2064      HetMinCov3HomMinCov2
+Kronos2254      HetMinCov3HomMinCov2
+Kronos2267      HetMinCov3HomMinCov2
+Kronos2322      HetMinCov3HomMinCov2
+Kronos2448      HetMinCov3HomMinCov2
+Kronos2480      HetMinCov3HomMinCov2
+Kronos2553      HetMinCov4HomMinCov3
+Kronos2876      HetMinCov4HomMinCov3
+Kronos3166      HetMinCov3HomMinCov2
+Kronos3186      HetMinCov3HomMinCov2
+Kronos3188      HetMinCov3HomMinCov2
+Kronos3210      HetMinCov4HomMinCov3
+Kronos3339      HetMinCov4HomMinCov3
+Kronos3344      HetMinCov5HomMinCov3
+Kronos3474      HetMinCov4HomMinCov3
+Kronos3505      HetMinCov5HomMinCov3
+Kronos3508      HetMinCov4HomMinCov3
+Kronos3540      HetMinCov4HomMinCov3
+Kronos3737      X
+Kronos3949      HetMinCov3HomMinCov2
+```
+
+This script will use param.list to find mutations from corresponding vcf files and combine them together.
+````
+python final_vcf.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.vcf No_RH.maps.vcf
+````
+
+
+
+For mutation effect detection, we will take a high-confidence gene set that only has one transcript per gene which encodes the longest protein. 
 ````
 less snpEff.config | grep 'Kronos'
 Kronos.genome : Kronos
@@ -308,44 +298,45 @@ awk '$3 == "gene" {print}' ./data/Kronos/genes.gff | wc -l
 awk '$3 == "mRNA" {print}' ./data/Kronos/genes.gff | wc -l
 69808
 
-java -jar /global/scratch/users/skyungyong/Software/snpEff/snpEff.jar eff -v Kronos all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.vcf > all.mapspart2.Lib20HetMinPer15HetMinCov5HomMinCov3.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf
+java -jar /global/scratch/users/skyungyong/Software/snpEff/snpEff.jar eff -v Kronos combine
+d.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.vcf
+ > combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf
 ````
 
-For all gene sets, 
-
-EMS type mutations
+This output contains 23 annotations for mutation effects. We will use the following categorization for visualization.
 ````
-less all.mapspart2.HetMinCov5HomMinCov3.reformatted.snpeff.out | awk '($4 == "G" && $5 == "A") || ($4 == "C" && $5 == "T") {print}' | cut -f 3 | cut -d ":" -f 1 | sort | uniq -c | sed 's/Kr//g' | sort -nk 2 | awk '{print "Kr" $2 "\t" $1}'
-Kr244   1182
-Kr439   1052
-Kr456   1455
-Kr563   1426
-Kr620   588
-Kr628   1181
-Kr684   1375
-Kr807   1251
-Kr1194  2091
-Kr1360  902
-Kr1382  826
-Kr2053  961
-Kr2064  723
-Kr2254  1168
-Kr2267  608
-Kr2322  943
-Kr2448  1286
-Kr2480  467
-Kr2553  1747
-Kr2876  1318
-Kr3166  1329
-Kr3186  1878
-Kr3188  1652
-Kr3210  1018
-Kr3339  825
-Kr3344  727
-Kr3474  1173
-Kr3505  791
-Kr3508  1006
-Kr3540  910
-Kr3737  737
-Kr3949  1137
+Intergenic region:
+intergenic_region
+
+regulatory regions:
+upstream_gene_variant
+downstream_gene_variant
+
+UTRs:
+3_prime_UTR_variant
+5_prime_UTR_variant
+5_prime_UTR_premature_start_codon_gain_variant
+
+Coding sequences:
+synonymous_variant
+missense_variant
+initiator_codon_variant
+start_lost
+stop_lost
+stop_gained
+stop_retained_variant
+
+Splicing sites:
+splice_donor_variant&intron_variant
+splice_region_variant&intron_variant
+splice_region_variant&stop_retained_variant
+stop_gained&splice_region_variant
+splice_region_variant&synonymous_variant
+missense_variant&splice_region_variant
+stop_lost&splice_region_variant
+splice_region_variant
+splice_acceptor_variant&intron_variant
+
+Introns:
+intron_variant
 ````
