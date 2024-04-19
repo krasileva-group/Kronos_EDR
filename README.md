@@ -340,3 +340,38 @@ splice_acceptor_variant&intron_variant
 Introns:
 intron_variant
 ````
+
+awk -F'\t' 'BEGIN {
+    # Initialize a list of all Kronos IDs for later use in header generation
+    split("Kronos0 Kronos1194 Kronos1360 Kronos1382 Kronos2053 Kronos2064 Kronos2254 Kronos2267 Kronos2322 Kronos244 Kronos2448 Kronos2480 Kronos2553 Kronos2876 Kronos3166 Kronos3186 Kronos3188 Kronos3210 Kronos3339 Kronos3344 Kronos3474 Kronos3505 Kronos3508 Kronos3540 Kronos3737 Kronos3949 Kronos439 Kronos456 Kronos563 Kronos620 Kronos628 Kronos684 Kronos807", allKronos)
+}
+/^#/{next} {
+    split($8, a, ";");
+    for (i in a) {
+        if (a[i] ~ /^seed_avail=/) {
+            seed = substr(a[i], 12);
+        }
+        if (a[i] ~ /^ANN=/) {
+            split(a[i], ann, "|");
+            variant[seed][ann[2]]++;
+            variantTypes[ann[2]];  # Track all variant types
+        }
+    }
+}
+END {
+    # Print header row with all variant types
+    printf "%s", "KronosID";
+    for (v in variantTypes) printf "\t%s", v;
+    print "";
+    
+    # Print data rows for each Kronos ID
+    for (k in allKronos) {
+        printf "%s", k;
+        for (v in variantTypes) {
+            count = (variant[k][v] ? variant[k][v] : 0);  # Handle missing types with a default of 0
+            printf "\t%d", count;
+        }
+        print "";
+    }
+}' combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf
+
