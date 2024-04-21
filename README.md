@@ -201,7 +201,7 @@ for pair in "2,3" "3,2", "3,4" "3,5" "4,3" "5,3" "6,4"; do
 done
 ```
 
-I changed the SRA accessions to Kronos line IDs and converted the coordinates of broken scaffolds to those of original scaffolds.
+ChangE the SRA accessions to Kronos line IDs and converted the coordinates of broken scaffolds to those of original scaffolds.
 ```
 ls *.tsv | while read line; do python $line ; done
 ```
@@ -305,73 +305,21 @@ d.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corre
 
 This output contains 23 annotations for mutation effects. We will use the following categorization for visualization.
 ````
-Intergenic region:
-intergenic_region
-
-regulatory regions:
-upstream_gene_variant
-downstream_gene_variant
-
-UTRs:
-3_prime_UTR_variant
-5_prime_UTR_variant
-5_prime_UTR_premature_start_codon_gain_variant
-
-Coding sequences:
-synonymous_variant
-missense_variant
-initiator_codon_variant
-start_lost
-stop_lost
-stop_gained
-stop_retained_variant
-
-Splicing sites:
-splice_donor_variant&intron_variant
-splice_region_variant&intron_variant
-splice_region_variant&stop_retained_variant
-stop_gained&splice_region_variant
-splice_region_variant&synonymous_variant
-missense_variant&splice_region_variant
-stop_lost&splice_region_variant
-splice_region_variant
-splice_acceptor_variant&intron_variant
-
-Introns:
-intron_variant
+python analyze_vcf_variants.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf --action count
+Data exported to: mutation_counts.csv
 ````
 
-awk -F'\t' 'BEGIN {
-    # Initialize a list of all Kronos IDs for later use in header generation
-    split("Kronos0 Kronos1194 Kronos1360 Kronos1382 Kronos2053 Kronos2064 Kronos2254 Kronos2267 Kronos2322 Kronos244 Kronos2448 Kronos2480 Kronos2553 Kronos2876 Kronos3166 Kronos3186 Kronos3188 Kronos3210 Kronos3339 Kronos3344 Kronos3474 Kronos3505 Kronos3508 Kronos3540 Kronos3737 Kronos3949 Kronos439 Kronos456 Kronos563 Kronos620 Kronos628 Kronos684 Kronos807", allKronos)
-}
-/^#/{next} {
-    split($8, a, ";");
-    for (i in a) {
-        if (a[i] ~ /^seed_avail=/) {
-            seed = substr(a[i], 12);
-        }
-        if (a[i] ~ /^ANN=/) {
-            split(a[i], ann, "|");
-            variant[seed][ann[2]]++;
-            variantTypes[ann[2]];  # Track all variant types
-        }
-    }
-}
-END {
-    # Print header row with all variant types
-    printf "%s", "KronosID";
-    for (v in variantTypes) printf "\t%s", v;
-    print "";
-    
-    # Print data rows for each Kronos ID
-    for (k in allKronos) {
-        printf "%s", k;
-        for (v in variantTypes) {
-            count = (variant[k][v] ? variant[k][v] : 0);  # Handle missing types with a default of 0
-            printf "\t%d", count;
-        }
-        print "";
-    }
-}' combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf
+````
+python analyze_vcf_variants.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf --action categorize
+Data exported to: mutation_categories.csv
+````
 
+The following will look for mutations that are assigned to 'synonymous_variant', 'missense_variant' and 'stop_gained' and count each. The columns include:  
+
+Kronos line, missense_variant, stop_gained (nonsense), synonymous_variant (sense) and UniqueGeneCount  
+UniqueGeneCount indicates the number of non-redundant genes per line that contained any of these three types of mutations. 
+
+````
+python analyze_vcf_variants.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf --action CDS
+Data exported to: CDS_variant_gene_counts.csv
+````
