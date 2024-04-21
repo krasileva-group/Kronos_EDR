@@ -303,23 +303,44 @@ d.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corre
  > combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf
 ````
 
-This output contains 23 annotations for mutation effects. We will use the following categorization for visualization.
+The following will count EMS and non-EMS type mutations per line. 
 ````
 python analyze_vcf_variants.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf --action count
 Data exported to: mutation_counts.csv
 ````
 
+The column names are:  
+````
+Kronos line
+Non-EMS substitutions
+G to A substitutions
+C to T substitutions
+EMS type substitutions
+Total substitutions
+% EMS rate
+````
+
+The following will assign one mutation to one category, following some logics. It first relies on ranking of mutations assigned by snpeff: high, medium, low and modifier. If a mutation creates variants of multiple genes and the rankings are on par, the priority follows: coding sequences, splicing sites, introns, UTRs, regulatory regions, and intergenic regions. 
 ````
 python analyze_vcf_variants.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf --action categorize
 Data exported to: mutation_categories.csv
 ````
 
-The following will look for mutations that are assigned to 'synonymous_variant', 'missense_variant' and 'stop_gained' and count each. The columns include:  
 
-Kronos line, missense_variant, stop_gained (nonsense), synonymous_variant (sense) and UniqueGeneCount  
-UniqueGeneCount indicates the number of non-redundant genes per line that contained any of these three types of mutations. 
+
+The following will look for mutations that are assigned to 'synonymous_variant', 'missense_variant' and 'stop_gained' and count each. 
 
 ````
 python analyze_vcf_variants.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf --action CDS
 Data exported to: CDS_variant_gene_counts.csv
 ````
+
+The column names are:  
+````
+Kronos line
+missense mutations
+nonsense mutations
+sense mutations
+UniqueGeneCount
+````
+UniqueGeneCount indicates the number of non-redundant genes per line that contained any of these three types of mutations. 
