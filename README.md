@@ -283,6 +283,8 @@ For mutation effect detection, we will take a high-confidence gene set that only
 less snpEff.config | grep 'Kronos'
 Kronos.genome : Kronos
 
+less snpEff.config | grep
+
 #genome version 1.1 annotaion version 1.0 (high-confidence only)
 ls -lha ./data/Kronos/
 -rw-r--r-- 1 skyungyong ucb  87M Apr  3 21:18 cds.fa
