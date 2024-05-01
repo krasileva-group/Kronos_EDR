@@ -1,5 +1,7 @@
 # Kronos Exome-Capture Sequencing Data Re-Mapping
 
+Relevant output files of this repository can be accessed through (Zenodo)[https://zenodo.org/records/11099763].
+
 ## Datasets
 
 Following datasets were downloaded from the NCBI with sra-tools v2.11.2. The datasets for Kronos2027 and Kronos2067 could not be found. 
