@@ -346,3 +346,47 @@ sense mutations
 UniqueGeneCount
 ````
 UniqueGeneCount indicates the number of non-redundant genes per line that contained any of these three types of mutations. 
+
+
+
+## Orthology inference
+
+Orthogroups were inferred with OrthoFinder v2.5.5. Diamond v2.1.7 was used for homology inference, MAFFT v7.525 for sequence alignments and FastTree v2.1.11 for constructing phylogenetic trees.
+````
+orthofinder.py -t 56 -M msa -S diamond -A mafft -T fasttree -f ALL
+````
+
+Originally, these databases were included. Only the longest protein per gene was used for orthology inference. For Kronos, we used both high and low-confidence genes, as some orthologs were identified from the low-confidence set. 
+
+````
+-rw-r--r-- 1 skyungyong ucb  26M Jun 27  2021 Araport11_pep_20210622.fasta
+-rw-r--r-- 1 skyungyong ucb  17M Jan  8 19:53 IRGSP-1.0_protein_2024-01-11.fasta
+-rw-r--r-- 1 skyungyong ucb  12M Sep  6  2019 ITAG4.0_proteins.fasta
+-rw-r--r-- 1 skyungyong ucb  84M Apr 24 16:24 Triticum_aestivum.IWGSC.pep.all.fa
+-rw-r--r-- 1 skyungyong ucb  44M Nov  7 01:01 Zea_mays.Zm-B73-REFERENCE-NAM-5.0.pep.all.fa
+````
+
+Within the 'ALL' directory, these sequences were present. 
+````
+-rw-r--r-- 1 skyungyong ucb  41M Apr 24 17:10 Kronos.fa
+-rw-r--r-- 1 skyungyong ucb  12M Apr 24 16:18 arabidopsis.fa
+-rw-r--r-- 1 skyungyong ucb 9.8K Apr 27 14:22 cloned.fa
+-rw-r--r-- 1 skyungyong ucb  15M Apr 24 16:22 maize.fa
+-rw-r--r-- 1 skyungyong ucb  13M Apr 27 14:21 rice.fa
+-rw-r--r-- 1 skyungyong ucb  12M Apr 24 16:12 tomato.fa
+-rw-r--r-- 1 skyungyong ucb  45M Apr 24 16:24 wheat.fa
+````
+
+To pair putative orthologs from Kronos and Chinese Spring, the locus information was mostly sufficient. The number of genes from each chromosome typically matched, and Kronos lacked orthologs of Chinese Spring genes that located in the D subgenomes. In other cases where paring is ambigous. Reciprocal best blast search was done with BLASTP v2.7.1.
+
+````
+blastp -query Kronos.v1.0.all.pep.fa -db Triticum_aestivum.IWGSC.pep.all -max_target_seqs 1 -max_hsps 1 -evalue 1e-10 -outfmt "6 std qlen slen" -out Kronos_vs_Taes.blast.out -num_threads 56
+blastp -query Triticum_aestivum.IWGSC.pep.all.fa -db Kronos.v1.0.all.pep -max_target_seqs 1 -max_hsps 1 -evalue 1e-10 -outfmt "6 std qlen slen" -out Taes_vs_Kronos.blast.out -num_threads 56
+````
+
+For Yr gene products (especially NLRs), the size of orthogroups was big, and orthology was ambigous. We attempted regenerating phylogenetic trees with members in the orthogroups in the following way, if Kronos or Chinese Spring had homologs with > 95% sequence identity.
+
+````
+mafft --maxiterate 1000 --globalpair --thread 56 OG000004.fa > OG000004.msa.fa
+fasttree --slow < OG000004.msa.fa > OG000004.tree.nwk
+```` 
