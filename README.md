@@ -283,8 +283,8 @@ For mutation effect detection, we will take a high-confidence gene set that only
 ````
 less snpEff.config | grep 'Kronos'
 Kronos.genome : Kronos
+KronosAll.genome : KronosAll
 
-less snpEff.config | grep
 
 #genome version 1.1 annotaion version 1.0 (high-confidence only)
 ls -lha ./data/Kronos/
@@ -301,9 +301,30 @@ awk '$3 == "gene" {print}' ./data/Kronos/genes.gff | wc -l
 awk '$3 == "mRNA" {print}' ./data/Kronos/genes.gff | wc -l
 69808
 
-java -jar /global/scratch/users/skyungyong/Software/snpEff/snpEff.jar eff -v Kronos combine
-d.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.vcf
- > combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.snpeff.vcf
+#KronosAll contains both high and low-confidence genes
+ls -lha ./data/KronosAll/
+-rw-r--r-- 1 skyungyong ucb 116M Apr 28 19:56 cds.fa
+-rw-r--r-- 1 skyungyong ucb 111M Apr 28 19:56 genes.gff
+-rw-r--r-- 1 skyungyong ucb  41M Apr 28 19:56 protein.fa
+-rw-r--r-- 1 skyungyong ucb 9.9G Apr 28 19:57 sequences.fa
+
+#one transcript per gene that produces the longest protein
+awk '$3 == "gene" {print}' ./data/KronosAll/genes.gff | wc -l
+114189
+wk '$3 == "mRNA" {print}' ./data/KronosAll/genes.gff | wc -l
+114189
+
+#For high confidence genes
+java -jar snpEff.jar eff -v Kronos combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.vcf > combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.highConf.snpeff.vcf
+
+java -jar snpEff.jar eff -v Kronos combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.RH_only.maps.vcf > combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.RH_only.maps.highConf.snpeff.vcf
+
+#For high and low confidence genes
+java -jar snpEff.jar eff -v KronosAll combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.vcf
+ > combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.allGenes.snpeff.vcf
+
+java -jar snpEff.jar eff -v KronosAll all.mapspart2.Lib20HetMinPer15HetMinCov3HomMinCov4.reformatted.corrected.10kb_bins.RH.byContig.MI.RH_only.maps.vcf > combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.RH_only.maps.allGenes.snpeff.vcf
+
 ````
 
 The following will count EMS and non-EMS type mutations per line. 
