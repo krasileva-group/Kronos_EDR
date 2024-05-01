@@ -1,6 +1,6 @@
 # Kronos Exome-Capture Sequencing Data Re-Mapping
 
-Relevant output files of this repository can be accessed through (Zenodo)[https://zenodo.org/records/11099763].
+Relevant output files of this repository can be accessed through [Zenodo](https://zenodo.org/records/11099763).
 
 ## Datasets
 
