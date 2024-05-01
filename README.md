@@ -274,6 +274,7 @@ Kronos3949      HetMinCov3HomMinCov2
 This script will use param.list to find mutations from corresponding vcf files and combine them together.
 ````
 python final_vcf.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.No_RH.maps.vcf No_RH.maps.vcf
+python final_vcf.py combined.mapspart2.Lib20HetMinPer15HetMinCovVariableHomMinCovVariable.reformatted.corrected.10kb_bins.RH.byContig.MI.RH_only.maps.vcf RH_only.maps.vcf
 ````
 
 
