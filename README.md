@@ -203,9 +203,9 @@ for pair in "2,3" "3,2", "3,4" "3,5" "4,3" "5,3" "6,4"; do
 done
 ```
 
-ChangE the SRA accessions to Kronos line IDs and converted the coordinates of broken scaffolds to those of original scaffolds.
+Change the SRA accessions to Kronos line IDs and converted the coordinates of broken scaffolds to those of original scaffolds.
 ```
-ls *.tsv | while read line; do python $line ; done
+ls *.tsv | while read line; do python reformat_maps2_tsv.py $line ; done
 ```
 
 Detect and remove residual hetrogenity. 
