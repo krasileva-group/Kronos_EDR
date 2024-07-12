@@ -413,4 +413,20 @@ For Yr gene products (especially NLRs), the size of orthogroups was big, and ort
 ````
 mafft --maxiterate 1000 --globalpair --thread 56 OG000004.fa > OG000004.msa.fa
 fasttree --slow < OG000004.msa.fa > OG000004.tree.nwk
-```` 
+````
+
+-----
+-----
+
+# Kronos620 remapping
+
+````
+for read1 in *_R1.fq.gz; do
+  prefix="${read1%_R1.fq.gz}"
+  read2="${prefix}_R2.fq.gz"
+  out1="${prefix}.1.filtered.fq"
+  out2="${prefix}.2.filtered.fq"
+
+  fastp --in1 "$read1" --in2 "$read2" --out1 "$out1" --out2 "$out2" --thread 16 -q 20
+done
+````
