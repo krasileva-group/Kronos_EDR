@@ -430,3 +430,14 @@ for read1 in *_R1.fq.gz; do
   fastp --in1 "$read1" --in2 "$read2" --out1 "$out1" --out2 "$out2" --thread 16 -q 20
 done
 ````
+
+````
+for read1 in *.1.filtered.fq; do
+  prefix="${read1%.1.filtered.fq}"
+  read2="${prefix}.2.filtered.fq"
+  bwa mem -t 40 ../KS-Kronos_remapping/Reference/Kronos ${read1} ${read2} > ${prefix}.sam
+  samtools view -@56 -h ${prefix}.sam | samtools sort -@56 -o ${prefix}.sorted.bam
+  samtools index -@56 ${prefix}.sorted.bam
+  picard MarkDuplicates REMOVE_DUPLICATES=ture I=${prefix}.sorted.bam" O=${prefix}.sorted.rmdup.bam M=${prefix}.rmdup.txt
+done
+````
