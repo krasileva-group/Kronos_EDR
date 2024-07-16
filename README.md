@@ -420,6 +420,8 @@ fasttree --slow < OG000004.msa.fa > OG000004.tree.nwk
 
 # Kronos620 remapping
 
+
+Trim and filter the reads with fastp. 
 ````
 for read1 in *_R1.fq.gz; do
   prefix="${read1%_R1.fq.gz}"
@@ -431,13 +433,25 @@ for read1 in *_R1.fq.gz; do
 done
 ````
 
+Align the filtered reads into the broken chromosomes with bwa-mem v0.7.17-r1188. 
 ````
 for read1 in *.1.filtered.fq; do
   prefix="${read1%.1.filtered.fq}"
   read2="${prefix}.2.filtered.fq"
-  bwa mem -t 40 ../KS-Kronos_remapping/Reference/Kronos ${read1} ${read2} > ${prefix}.sam
+#  bwa mem -t 40 ../KS-Kronos_remapping/Reference/Kronos ${read1} ${read2} > ${prefix}.sam
   samtools view -@56 -h ${prefix}.sam | samtools sort -@56 -o ${prefix}.sorted.bam
   samtools index -@56 ${prefix}.sorted.bam
-  picard MarkDuplicates REMOVE_DUPLICATES=ture I=${prefix}.sorted.bam" O=${prefix}.sorted.rmdup.bam M=${prefix}.rmdup.txt
+  picard MarkDuplicates REMOVE_DUPLICATES=ture I=${prefix}.sorted.bam O=${prefix}.sorted.rmdup.bam M=${prefix}.rmdup.txt
 done
 ````
+Call SNPs with gatk v4.5.0
+````
+gatk CreateSequenceDictionary -R Kronos.collapsed.chromosomes.masked.v1.1.broken.fa
+for bam in *.sorted.rmdup.bam; do
+  prefix="${read1%.sorted.bam}"
+  picard AddOrReplaceReadGroups I=${bam} O={prefix}.sorted.rmdup.header.bam SORT_ORDER=coordinate RGLB=${prefix} RGPU=unit1 RGPL=ILLUMINA RGSM=${prefix} CREATE_INDEX=True
+  gatk HaplotypeCaller -R /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -I ${bam} -O ${prefix}.vcf.gz
+done
+````
+
+    
