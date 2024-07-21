@@ -454,4 +454,60 @@ for bam in *.sorted.rmdup.bam; do
 done
 ````
 
-    
+Here the goal is to analyze the analyze the frequency of alternative allelles in the resistant pools and susceptible pools.Let's first select reliable SNP position in the resistant pools. 
+````
+#!/bin/bash
+
+file=$1
+
+while read -r vcf_line; do
+  # Skip header lines in VCF file
+  [[ $vcf_line =~ ^# ]] && continue
+
+  # Extract quality and INFO fields
+  quality=$(echo "$vcf_line" | cut -f 6)
+  info_field=$(echo "$vcf_line" | cut -f 8)
+
+  # Extract DP value from the INFO field
+  DP=$(echo "$info_field" | awk -F';' '{for(i=1;i<=NF;i++) if($i ~ /^DP=/) print substr($i,4)}')
+
+  # Use bc for floating-point comparisons
+  quality_check=$(echo "$quality > 30" | bc)
+  DP_check=$(echo "$DP > 5" | bc)
+
+  if [[ $quality_check -eq 1 && $DP_check -eq 1 ]]; then
+    chromosome=$(echo "$vcf_line" | cut -f 1)
+    position=$(echo "$vcf_line" | cut -f 2)
+    reference=$(echo "$vcf_line" | cut -f 4)
+    alternative=$(echo "$vcf_line" | cut -f 5)
+    echo -e "$chromosome\t$position\t$reference\t$alternative"
+  fi
+done < "$file" > ${file}.hc_calls.list
+````
+
+#!/bin/bash
+
+# Define the number of CPUs
+num_cpus=50
+
+# Read phenotype file and extract VCF files for the resistant pool
+resistantPool=$(awk '$2 == "R" {print $1 ".vcf"}' phenotypes.txt)
+
+# Export the function to be used by GNU Parallel
+chmod +x process_vcf.sh
+
+# Use GNU Parallel to process each VCF file in parallel
+echo "$resistantPool" | parallel -j $num_cpus ./process_vcf.sh {}
+
+# Combine and sort the results
+sort -k1,1 -nk2,2 confident_SNPs.position.list | uniq > confident_SNPs.position.sorted.list
+
+
+We will now iterate the vcf files, as well as bam files and add some more information. [1] find SNPs between the Kronos reference genome and the WT pools. The SNPs commonly detected in the resistant pool and the WT pool will be dropped. [2] re-quantify SNPs in the positions of interest from the bam files. If the susceptible pools have the same sequences as the Kronos reference genome, the vcf files will not print out any information about the positions. For the purpose of the visualization, we still want to quantify the reads mapped to those positions. 
+
+
+singularity pull docker://mgibio/bam-readcount
+
+bam-readcount -q 20 -l -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa
+
+
