@@ -438,7 +438,7 @@ Align the filtered reads into the broken chromosomes with bwa-mem v0.7.17-r1188.
 for read1 in *.1.filtered.fq; do
   prefix="${read1%.1.filtered.fq}"
   read2="${prefix}.2.filtered.fq"
-#  bwa mem -t 40 ../KS-Kronos_remapping/Reference/Kronos ${read1} ${read2} > ${prefix}.sam
+  bwa mem -t 40 ../KS-Kronos_remapping/Reference/Kronos ${read1} ${read2} > ${prefix}.sam
   samtools view -@56 -h ${prefix}.sam | samtools sort -@56 -o ${prefix}.sorted.bam
   samtools index -@56 ${prefix}.sorted.bam
   picard MarkDuplicates REMOVE_DUPLICATES=ture I=${prefix}.sorted.bam O=${prefix}.sorted.rmdup.bam M=${prefix}.rmdup.txt
@@ -454,24 +454,44 @@ for bam in *.sorted.rmdup.bam; do
 done
 ````
 
-Here the goal is to analyze the analyze the frequency of alternative allelles in the resistant pools and susceptible pools.Let's first select reliable SNP position in the resistant pools. 
+Here the goal is to analyze the analyze the frequency of alternative allelles in the resistant pools and susceptible pools. Let's first select reliable SNP position in the resistant pools. 
 ````
 # Define the number of CPUs
 num_cpus=50
 
 # Read phenotype file and extract VCF files for the resistant pool
 resistantPool=$(awk '$2 == "R" {print $1 ".vcf"}' phenotypes.txt)
+wildtypePool=$(awk '$2 == "W" {print $1 ".vcf"}' phenotypes.txt)
 
 # Export the function to be used by GNU Parallel
 chmod +x process_gatk_vcf.sh
 
 # Use GNU Parallel to process each VCF file in parallel
 echo "$resistantPool" | parallel -j $num_cpus ./process_gatk_vcf.sh {}
+echo "$wildtypePool" | parallel -j $num_cpus ./process_gatk_vcf.sh {}
 
 # Combine and sort the results
-cat *.hc_calls.list | sort -V -k1,1 -k2,2n | uniq > confident_SNPs.position.sorted.list
+cat *K-1*.hc_calls.list | sort -V -k1,1 -k2,2n | uniq > resistant_SNPs.position.sorted.list
+cat *K-Kronos-0*.hc_calls.list | sort -V -k1,1 -k2,2n | uniq > wildtype_SNPs.position.sorted.list
+
+cat resistant_SNPs.position.sorted.list wildtype_SNPs.position.sorted.list | sort | uniq -c | awk '$1 == 2 { $1=""; sub(/^[ \t]+/, ""); print }' OFS="\t" > overlapping_SNPs.position.sorted.list
+grep -v -Ff overlapping_SNPs.position.sorted.list resistant_SNPs.position.sorted.list > confident_resistant_SNPs.position.sorted.list
+
 ````
 
+````
+for bam in *.sorted.rmdup.header.bam; do
+  prefix="${bam%.sorted.rmdup.header.bam}"
+  bam-readcount -q 20 -w 10 -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -l /global/scratch/projects/vector_kvklab/KS-620/bwa-mem/vcfs/search_coorinates.list ${bam} > ${prefix}.bamcount
+done
+````
+resistantBam=$(cat vcfs/phenotypes.txt | awk '$2 == "R" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
+susceptibleBam=$(cat vcfs/phenotypes.txt | awk '$2 == "S" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
+wildtypeBam=$(cat vcfs/phenotypes.txt | awk '$2 == "W" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
+
+samtools merge -@56 resistantBulk.bam $resistantBam
+samtools merge -@56 susceptibleBulk.bam $susceptibleBam
+samtools merge -@56 wildtypeBulk.bam $wildtypeBam
 
 
 We will now iterate the vcf files, as well as bam files and add some more information. [1] find SNPs between the Kronos reference genome and the WT pools. The SNPs commonly detected in the resistant pool and the WT pool will be dropped. [2] re-quantify SNPs in the positions of interest from the bam files. If the susceptible pools have the same sequences as the Kronos reference genome, the vcf files will not print out any information about the positions. For the purpose of the visualization, we still want to quantify the reads mapped to those positions. 
