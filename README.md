@@ -501,4 +501,4 @@ singularity pull docker://mgibio/bam-readcount
 
 bam-readcount -q 20 -l -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa
 
-
+mutmap -r /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -c /global/scratch/projects/vector_kvklab/KS-620/bwa-mem/wildtypeBulk.bam -b /global/scratch/projects/vector_kvklab/KS-620/bwa-mem/resistantBulk.bam -t 56 -n 1313 -o Mutmap_resistant --mem 5G --species Wheat
