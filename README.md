@@ -454,6 +454,55 @@ for bam in *.sorted.rmdup.bam; do
 done
 ````
 
+bcftools --version
+bcftools 1.20
+Using htslib 1.20
+
+resistantPool=$(awk '$2 == "R" {print $1 ".vcf.gz"}' phenotypes.txt)
+bcftools merge -o resistant_pool.merged.vcf.gz --thread 56 $resistantPool
+tabix -p vcf resistant_pool.merged.vcf.gz
+bcftools filter -i 'QUAL>30 && FMT/DP>5' resistant_pool.merged.vcf.gz -Oz -o resistant_pool.merged.filtered.vcf.gz
+bcftools norm -m-any --thread 56 -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o resistant_pool.merged.filtered.norm.vcf.gz resistant_pool.merged.filtered.vcf.gz
+tabix -p vcf resistant_pool.merged.filtered.norm.vcf.gz
+
+
+wildtypePool=$(awk '$2 == "W" {print $1 ".vcf.gz"}' phenotypes.txt)
+bcftools merge -o wildtype_pool.merged.vcf.gz --thread 56 $wildtypePool
+tabix -p vcf wildtype_pool.merged.vcf.gz
+bcftools filter -i 'QUAL>30 && FMT/DP>5' wildtype_pool.merged.vcf.gz -Oz -o wildtype_pool.merged.filtered.vcf.gz
+bcftools norm -m-any --thread 56 -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o wildtype_pool.merged.filtered.norm.vcf.gz wildtype_pool.merged.filtered.vcf.gz
+tabix -p vcf wildtype_pool.merged.filtered.norm.vcf.gz 
+
+bcftools isec -p isec_output -Oz -C resistant_pool.merged.filtered.norm.vcf.gz wildtype_pool.merged.filtered.norm.vcf.gz
+cp isec_output/0000.vcf.gz resistant_pool.private.vcf.gz
+
+bcftools view resistant_pool.private.vcf.gz | wc -l
+89707
+(snp) [skyungyong@n0055 072624_vcf_processing]$ bcftools view resistant_pool.merged.filtered.norm.vcf.gz | wc -l
+93397
+
+
+
+isec_output/README.txt
+This file was produced by vcfisec.
+The command line was:   bcftools isec  -p isec_output -Oz resistant_pool.merged.filtered.vcf.gz wildtype_pool.merged.filtered.vcf.gz
+
+Using the following file names:
+isec_output/0000.vcf.gz for records private to  resistant_pool.merged.filtered.vcf.gz
+cp isec_output/0000.vcf.gz resistant_pool.private.vcf.gz
+bcftools query -f '%CHROM\t%POS\t%POS\n' resistant_pool.private.vcf.gz | uniq > resistant_pool.private.bed
+
+
+for bam in ../../*.sorted.rmdup.header.bam; do
+  prefix=$(basename $bam)
+  gatk DepthOfCoverage \
+        -R /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa \
+        -I $bam \
+        -L resistant_pool.private.bed \
+        -O ${prefix}_depth
+done
+
+
 Here the goal is to analyze the analyze the frequency of alternative allelles in the resistant pools and susceptible pools. Let's first select reliable SNP position in the resistant pools. 
 ````
 # Define the number of CPUs
