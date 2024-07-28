@@ -454,85 +454,56 @@ for bam in *.sorted.rmdup.bam; do
 done
 ````
 
-bcftools --version
-bcftools 1.20
-Using htslib 1.20
-
+Let's identify alternative alleles unique to the resistant pools with bcftools v1.2.0.
+````
+#merge all resistant vcf files
 resistantPool=$(awk '$2 == "R" {print $1 ".vcf.gz"}' phenotypes.txt)
 bcftools merge -o resistant_pool.merged.vcf.gz --thread 56 $resistantPool
 tabix -p vcf resistant_pool.merged.vcf.gz
+
+#filter low-quality variants and renomralize
 bcftools filter -i 'QUAL>30 && FMT/DP>5' resistant_pool.merged.vcf.gz -Oz -o resistant_pool.merged.filtered.vcf.gz
-bcftools norm -m-any --thread 56 -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o resistant_pool.merged.filtered.norm.vcf.gz resistant_pool.merged.filtered.vcf.gz
+bcftools norm -m-any --thread 56 -f Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o resistant_pool.merged.filtered.norm.vcf.gz resistant_pool.merged.filtered.vcf.gz
 tabix -p vcf resistant_pool.merged.filtered.norm.vcf.gz
 
-
+#merge all wildtype vcf files
 wildtypePool=$(awk '$2 == "W" {print $1 ".vcf.gz"}' phenotypes.txt)
 bcftools merge -o wildtype_pool.merged.vcf.gz --thread 56 $wildtypePool
 tabix -p vcf wildtype_pool.merged.vcf.gz
+
+#filter low-quality variants and renomralize
 bcftools filter -i 'QUAL>30 && FMT/DP>5' wildtype_pool.merged.vcf.gz -Oz -o wildtype_pool.merged.filtered.vcf.gz
-bcftools norm -m-any --thread 56 -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o wildtype_pool.merged.filtered.norm.vcf.gz wildtype_pool.merged.filtered.vcf.gz
+bcftools norm -m-any --thread 56 -f Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o wildtype_pool.merged.filtered.norm.vcf.gz wildtype_pool.merged.filtered.vcf.gz
 tabix -p vcf wildtype_pool.merged.filtered.norm.vcf.gz 
 
+#find variants present only in the merged resistant vcf and not in the merged wild type vcf
+#this leads to 89,707 positions
 bcftools isec -p isec_output -Oz -C resistant_pool.merged.filtered.norm.vcf.gz wildtype_pool.merged.filtered.norm.vcf.gz
 cp isec_output/0000.vcf.gz resistant_pool.private.vcf.gz
-
-bcftools view resistant_pool.private.vcf.gz | wc -l
-89707
-(snp) [skyungyong@n0055 072624_vcf_processing]$ bcftools view resistant_pool.merged.filtered.norm.vcf.gz | wc -l
-93397
-
-
-
-isec_output/README.txt
-This file was produced by vcfisec.
-The command line was:   bcftools isec  -p isec_output -Oz resistant_pool.merged.filtered.vcf.gz wildtype_pool.merged.filtered.vcf.gz
-
-Using the following file names:
-isec_output/0000.vcf.gz for records private to  resistant_pool.merged.filtered.vcf.gz
-cp isec_output/0000.vcf.gz resistant_pool.private.vcf.gz
-bcftools query -f '%CHROM\t%POS\t%POS\n' resistant_pool.private.vcf.gz | uniq > resistant_pool.private.bed
-
-
-for bam in ../../*.sorted.rmdup.header.bam; do
-  prefix=$(basename $bam)
-  gatk DepthOfCoverage \
-        -R /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa \
-        -I $bam \
-        -L resistant_pool.private.bed \
-        -O ${prefix}_depth
-done
-
-
-Here the goal is to analyze the analyze the frequency of alternative allelles in the resistant pools and susceptible pools. Let's first select reliable SNP position in the resistant pools. 
-````
-# Define the number of CPUs
-num_cpus=50
-
-# Read phenotype file and extract VCF files for the resistant pool
-resistantPool=$(awk '$2 == "R" {print $1 ".vcf"}' phenotypes.txt)
-wildtypePool=$(awk '$2 == "W" {print $1 ".vcf"}' phenotypes.txt)
-
-# Export the function to be used by GNU Parallel
-chmod +x process_gatk_vcf.sh
-
-# Use GNU Parallel to process each VCF file in parallel
-echo "$resistantPool" | parallel -j $num_cpus ./process_gatk_vcf.sh {}
-echo "$wildtypePool" | parallel -j $num_cpus ./process_gatk_vcf.sh {}
-
-# Combine and sort the results
-cat *K-1*.hc_calls.list | sort -V -k1,1 -k2,2n | uniq > resistant_SNPs.position.sorted.list
-cat *K-Kronos-0*.hc_calls.list | sort -V -k1,1 -k2,2n | uniq > wildtype_SNPs.position.sorted.list
-
-cat resistant_SNPs.position.sorted.list wildtype_SNPs.position.sorted.list | sort | uniq -c | awk '$1 == 2 { $1=""; sub(/^[ \t]+/, ""); print }' OFS="\t" > overlapping_SNPs.position.sorted.list
-grep -v -Ff overlapping_SNPs.position.sorted.list resistant_SNPs.position.sorted.list > confident_resistant_SNPs.position.sorted.list
-
 ````
 
+Then, we will re-load the count for the reference and alternative allels for these positions with bam-readcount v0.8 and vatools v5.1.1.
 ````
+bcftools query -f '%CHROM\t%POS\t%POS\n' resistant_pool.private.vcf.gz | awk '{print $1"\t"$2-1"\t"$2+1}' | sort -u -k1,1 -k2,2n > resistant_pool.private.interval_list
+
 for bam in *.sorted.rmdup.header.bam; do
-  prefix="${bam%.sorted.rmdup.header.bam}"
-  bam-readcount -q 20 -w 10 -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -l /global/scratch/projects/vector_kvklab/KS-620/bwa-mem/vcfs/search_coorinates.list ${bam} > ${prefix}.bamcount
+  prefix=$(basename "${bam%.sorted.rmdup.header.bam}")
+  bam-readcount -q 20 -w 10 -f Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -l resistant_pool.private.interval_list ${bam} > ${prefix}.bamcount
 done
+
+#reformat the master vcf file so that counts for all libraries can be loaded. 
+python reformat_vcf_for_vatools.py > resistant_pool.private.reformatted.vcf
+cp resistant_pool.private.reformatted.vcf resistant_pool.private.reformatted.readocount.vcf
+
+for bamcount in *.bamcount; do
+  prefix=$(basename "${bamcount%.bamcount}")
+  vcf-readcount-annotator resistant_pool.private.reformatted.readocount.vcf ${bamcount} DNA -t all -o resistant_pool.private.reformatted.readocount.vcf2 -s ${prefix}
+  mv resistant_pool.private.reformatted.readocount.vcf2 resistant_pool.private.reformatted.readocount.vcf
+done
+````
+
+
+To complement the analysis, we also use QTL-seq v2.2.4
 ````
 resistantBam=$(cat vcfs/phenotypes.txt | awk '$2 == "R" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
 susceptibleBam=$(cat vcfs/phenotypes.txt | awk '$2 == "S" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
@@ -542,12 +513,5 @@ samtools merge -@56 resistantBulk.bam $resistantBam
 samtools merge -@56 susceptibleBulk.bam $susceptibleBam
 samtools merge -@56 wildtypeBulk.bam $wildtypeBam
 
-
-We will now iterate the vcf files, as well as bam files and add some more information. [1] find SNPs between the Kronos reference genome and the WT pools. The SNPs commonly detected in the resistant pool and the WT pool will be dropped. [2] re-quantify SNPs in the positions of interest from the bam files. If the susceptible pools have the same sequences as the Kronos reference genome, the vcf files will not print out any information about the positions. For the purpose of the visualization, we still want to quantify the reads mapped to those positions. 
-
-
-singularity pull docker://mgibio/bam-readcount
-
-bam-readcount -q 20 -l -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa
-
-mutmap -r /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -c /global/scratch/projects/vector_kvklab/KS-620/bwa-mem/wildtypeBulk.bam -b /global/scratch/projects/vector_kvklab/KS-620/bwa-mem/resistantBulk.bam -t 56 -n 1313 -o Mutmap_resistant --mem 5G --species Wheat
+qtlseq -r /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -p wildtypeBulk.bam -b1 resistantBulk.bam -b2 susceptibleBulk.bam -n1 1313 -n2 377 -o qtlseq_2 -t 56 --species Wheat
+````
