@@ -61,7 +61,7 @@ def summarize_vcf(vcffile, phenotype, vcfout, summaryout):
                 sus_ref += int(ct[0])
                 sus_alt += int(ct[1])
 
-        if (res_ref + res_alt) // R > 20 and (sus_ref + sus_alt) // S > 20:
+        if (res_ref + res_alt) // R > 20 and (sus_ref + sus_alt) // S > 20 and res_alt > 0 and sus_alt > 0:
             vcf_out.write(line)
             summary_fields = [chromosome, str(position), reference, alternative, str(wt_ref), str(wt_alt), str(res_ref), str(res_alt), str(sus_ref), str(sus_alt)]
             summary_out.write("\t".join(summary_fields) + '\n')
