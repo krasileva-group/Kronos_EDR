@@ -500,6 +500,9 @@ for bamcount in *.bamcount; do
   vcf-readcount-annotator resistant_pool.private.reformatted.readocount.vcf ${bamcount} DNA -t all -o resistant_pool.private.reformatted.readocount.vcf2 -s ${prefix}
   mv resistant_pool.private.reformatted.readocount.vcf2 resistant_pool.private.reformatted.readocount.vcf
 done
+
+#summarize the output
+python summarize_vcf_counts.py
 ````
 
 
