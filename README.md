@@ -518,3 +518,8 @@ samtools merge -@56 wildtypeBulk.bam $wildtypeBam
 
 qtlseq -r /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -p wildtypeBulk.bam -b1 resistantBulk.bam -b2 susceptibleBulk.bam -n1 1313 -n2 377 -o qtlseq_2 -t 56 --species Wheat
 ````
+
+python reposition_vcf.py
+less qtlseq.repositioned.vcf | awk '($4 == "G" && $5 == "A") || ($4 == "C" && $5 == "T") {print}' > qtlseq.repositioned.ems.vcf
+awk '($4 == "G" && $5 == "A") || ($4 == "C" && $5 == "T") {print}' qtlseq.repositioned.vcf >> qtlseq.repositioned.ems.vcf
+qtlplot -e Kronos -t 56 -n1 1313 -n2 377 -v qtlseq.repositioned.vcf -o test
