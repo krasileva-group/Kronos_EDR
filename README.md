@@ -462,8 +462,8 @@ bcftools merge -o resistant_pool.merged.vcf.gz --thread 56 $resistantPool
 tabix -p vcf resistant_pool.merged.vcf.gz
 
 #filter low-quality variants and renomralize
-bcftools filter -i 'QUAL>30 && FMT/DP>5' resistant_pool.merged.vcf.gz -Oz -o resistant_pool.merged.filtered.vcf.gz
-bcftools norm -m-any --thread 56 -f Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o resistant_pool.merged.filtered.norm.vcf.gz resistant_pool.merged.filtered.vcf.gz
+bcftools filter -i 'QUAL>30 && FMT/DP>10' resistant_pool.merged.vcf.gz -Oz -o resistant_pool.merged.filtered.vcf.gz
+bcftools norm -m-any --thread 56 -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o resistant_pool.merged.filtered.norm.vcf.gz resistant_pool.merged.filtered.vcf.gz
 tabix -p vcf resistant_pool.merged.filtered.norm.vcf.gz
 
 #merge all wildtype vcf files
@@ -472,12 +472,12 @@ bcftools merge -o wildtype_pool.merged.vcf.gz --thread 56 $wildtypePool
 tabix -p vcf wildtype_pool.merged.vcf.gz
 
 #filter low-quality variants and renomralize
-bcftools filter -i 'QUAL>30 && FMT/DP>5' wildtype_pool.merged.vcf.gz -Oz -o wildtype_pool.merged.filtered.vcf.gz
-bcftools norm -m-any --thread 56 -f Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o wildtype_pool.merged.filtered.norm.vcf.gz wildtype_pool.merged.filtered.vcf.gz
+bcftools filter -i 'QUAL>30 && FMT/DP>10' wildtype_pool.merged.vcf.gz -Oz -o wildtype_pool.merged.filtered.vcf.gz
+bcftools norm -m-any --thread 56 -f /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -Oz -o wildtype_pool.merged.filtered.norm.vcf.gz wildtype_pool.merged.filtered.vcf.gz
 tabix -p vcf wildtype_pool.merged.filtered.norm.vcf.gz 
 
 #find variants present only in the merged resistant vcf and not in the merged wild type vcf
-#this leads to 89,707 positions
+#this leads to 64,261 variants
 bcftools isec -p isec_output -Oz -C resistant_pool.merged.filtered.norm.vcf.gz wildtype_pool.merged.filtered.norm.vcf.gz
 cp isec_output/0000.vcf.gz resistant_pool.private.vcf.gz
 ````
@@ -491,7 +491,8 @@ for bam in *.sorted.rmdup.header.bam; do
   bam-readcount -q 20 -w 10 -f Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -l resistant_pool.private.interval_list ${bam} > ${prefix}.bamcount
 done
 
-#reformat the master vcf file so that counts for all libraries can be loaded. 
+#reformat the master vcf file so that counts for all libraries can be loaded.
+gunzip resistant_pool.private.vcf.gz
 python reformat_vcf_for_vatools.py > resistant_pool.private.reformatted.vcf
 cp resistant_pool.private.reformatted.vcf resistant_pool.private.reformatted.readocount.vcf
 
@@ -516,10 +517,23 @@ samtools merge -@56 resistantBulk.bam $resistantBam
 samtools merge -@56 susceptibleBulk.bam $susceptibleBam
 samtools merge -@56 wildtypeBulk.bam $wildtypeBam
 
-qtlseq -r /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -p wildtypeBulk.bam -b1 resistantBulk.bam -b2 susceptibleBulk.bam -n1 1313 -n2 377 -o qtlseq_2 -t 56 --species Wheat
+qtlseq -r /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -p wildtypeBulk.bam -b1 resistantBulk.bam -b2 susceptibleBulk.bam -n1 32 -n2 13 -o qtlseq_3 -t 56 --species Wheat
+
+#reindex positions
+python reposition_vcf.py
+qtlplot -e Kronos -t 56 -n1 1313 -n2 377 -v qtlseq.repositioned.vcf -o qtlplot_5mb -w 5000 -e Kronos -f pdf
 ````
 
-python reposition_vcf.py
-less qtlseq.repositioned.vcf | awk '($4 == "G" && $5 == "A") || ($4 == "C" && $5 == "T") {print}' > qtlseq.repositioned.ems.vcf
-awk '($4 == "G" && $5 == "A") || ($4 == "C" && $5 == "T") {print}' qtlseq.repositioned.vcf >> qtlseq.repositioned.ems.vcf
-qtlplot -e Kronos -t 56 -n1 1313 -n2 377 -v qtlseq.repositioned.vcf -o test
+Graphical genotyping
+
+for vcf in *.vcf.gz; do 
+  prefix="${vcf%.vcf.gz}"
+  bcftools view -r 1B:300000000-475000000 ${vcf} | 
+  bcftools filter -i 'QUAL > 30 && FMT/DP > 10' -O z -o ${prefix}.filtered.vcf.gz
+  bcftools index ${prefix}.filtered.vcf.gz
+done
+
+bcftools merge -o all.filtered.vcf *.filtered.vcf.gz
+
+
+java -jar snpEff.jar eff -v Kronos all.filtered.selected.vcf
