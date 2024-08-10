@@ -521,7 +521,7 @@ qtlseq -r /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/K
 
 #reindex positions
 python reposition_vcf.py
-qtlplot -e Kronos -t 56 -n1 1313 -n2 377 -v qtlseq.repositioned.vcf -o qtlplot_5mb -w 5000 -e Kronos -f pdf
+qtlplot -e Kronos -t 56 -n1 32 -n2 13 -v qtlseq.repositioned.vcf -o qtlplot_5mb -w 5000 -e Kronos -f pdf
 ````
 
 Graphical genotyping
