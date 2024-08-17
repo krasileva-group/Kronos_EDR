@@ -496,6 +496,7 @@ gunzip resistant_pool.private.vcf.gz
 python reformat_vcf_for_vatools.py > resistant_pool.private.reformatted.vcf
 cp resistant_pool.private.reformatted.vcf resistant_pool.private.reformatted.readocount.vcf
 
+#add counts to a single vcf file
 for bamcount in *.bamcount; do
   prefix=$(basename "${bamcount%.bamcount}")
   vcf-readcount-annotator resistant_pool.private.reformatted.readocount.vcf ${bamcount} DNA -t all -o resistant_pool.private.reformatted.readocount.vcf2 -s ${prefix}
@@ -509,31 +510,19 @@ python summarize_vcf_counts.py
 
 To complement the analysis, we also use QTL-seq v2.2.4
 ````
-resistantBam=$(cat vcfs/phenotypes.txt | awk '$2 == "R" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
-susceptibleBam=$(cat vcfs/phenotypes.txt | awk '$2 == "S" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
-wildtypeBam=$(cat vcfs/phenotypes.txt | awk '$2 == "W" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
+#pool the alignments
+resistantBam=$(cat phenotypes.txt | awk '$2 == "R" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
+susceptibleBam=$(cat phenotypes.txt | awk '$2 == "S" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
+wildtypeBam=$(cat phenotypes.txt | awk '$2 == "W" {print $1 ".sorted.rmdup.header.bam"}' | tr '\n' ' ')
 
 samtools merge -@56 resistantBulk.bam $resistantBam
 samtools merge -@56 susceptibleBulk.bam $susceptibleBam
 samtools merge -@56 wildtypeBulk.bam $wildtypeBam
 
+#run qltseq
 qtlseq -r /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -p wildtypeBulk.bam -b1 resistantBulk.bam -b2 susceptibleBulk.bam -n1 32 -n2 13 -o qtlseq_3 -t 56 --species Wheat
 
-#reindex positions
+#reindex positions and run qtlplot
 python reposition_vcf.py
 qtlplot -e Kronos -t 56 -n1 32 -n2 13 -v qtlseq.repositioned.vcf -o qtlplot_5mb -w 5000 -e Kronos -f pdf
 ````
-
-Graphical genotyping
-
-for vcf in *.vcf.gz; do 
-  prefix="${vcf%.vcf.gz}"
-  bcftools view -r 1B:300000000-475000000 ${vcf} | 
-  bcftools filter -i 'QUAL > 30 && FMT/DP > 10' -O z -o ${prefix}.filtered.vcf.gz
-  bcftools index ${prefix}.filtered.vcf.gz
-done
-
-bcftools merge -o all.filtered.vcf *.filtered.vcf.gz
-
-
-java -jar snpEff.jar eff -v Kronos all.filtered.selected.vcf
