@@ -448,7 +448,7 @@ Call SNPs with gatk v4.5.0
 ````
 gatk CreateSequenceDictionary -R Kronos.collapsed.chromosomes.masked.v1.1.broken.fa
 for bam in *.sorted.rmdup.bam; do
-  prefix="${read1%.sorted.bam}"
+  prefix="${bam%.sorted.rmdup.bam}"
   picard AddOrReplaceReadGroups I=${bam} O={prefix}.sorted.rmdup.header.bam SORT_ORDER=coordinate RGLB=${prefix} RGPU=unit1 RGPL=ILLUMINA RGSM=${prefix} CREATE_INDEX=True
   gatk HaplotypeCaller -R /global/scratch/projects/vector_kvklab/KS-Kronos_remapping/Reference/Kronos.collapsed.chromosomes.masked.v1.1.broken.fa -I ${bam} -O ${prefix}.vcf.gz
 done
